@@ -4,15 +4,14 @@ from pydantic import BaseModel
 import google.generativeai as genai
 import json
 
-# 1. Configuración de la API
-# ¡AQUÍ PON TU CLAVE REAL DE GEMINI!
-API_KEY = "AIzaSyC15k5n-6eqqvFOaAkElQCc_7E9FOkvyS0"
+# ==========================================
+# 1. CONFIGURACIÓN DE LA API
+# ==========================================
+API_KEY = "AIzaSyC15k5n-6eqqvFOaAkElQCc_7E9FOkvyS0" # <--- ¡ASEGÚRATE DE PEGAR TU CLAVE QUE TERMINA EN vyS0 AQUÍ!
 genai.configure(api_key=API_KEY)
 
-# 2. Inicializar la app
 app = FastAPI(title="UroPrecise Backend", version="2.0")
 
-# 3. Configurar CORS (Permite que GitHub hable con tu Mac)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -21,7 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. Estructura de datos
 class DatosClinicos(BaseModel):
     edad: int
     estadio_clinico: str
@@ -35,7 +33,6 @@ class PerfilPaciente(BaseModel):
     comorbilidades: list[str]
     medicamentos_concomitantes: list[str]
 
-# 5. El Prompt Maestro
 INSTRUCCION_SISTEMA = """
 Eres el motor clínico avanzado de Inteligencia Artificial "UroPrecise", diseñado para asistir a especialistas en Uro-Oncología. 
 Tu función es sugerir el Inhibidor de la Vía del Receptor de Andrógenos (ARPI) óptimo para cáncer de próstata avanzado, basándote estrictamente en las guías NCCN, AUA y EAU (actualizadas a 2026).
@@ -64,14 +61,25 @@ modelo_gemini = genai.GenerativeModel(
     generation_config={"response_mime_type": "application/json"}
 )
 
-# 6. La Ruta Segura
 @app.post("/api/analizar-paciente")
 async def analizar_paciente(perfil: PerfilPaciente):
     try:
+        print(f"🏥 Procesando paciente: {perfil.paciente_id}")
         datos_json = perfil.model_dump_json()
+        
+        # Enviar a Gemini
         respuesta = modelo_gemini.generate_content(datos_json)
-        resultado_ia = json.loads(respuesta.text)
+        texto_respuesta = respuesta.text
+        print(f"🧠 Respuesta cruda de Gemini: {texto_respuesta}")
+        
+        # Filtro Antibalas: Limpiar decoraciones Markdown que rompen el código
+        if texto_respuesta.startswith("```"):
+            texto_respuesta = texto_respuesta.replace("```json", "").replace("```", "").strip()
+            
+        resultado_ia = json.loads(texto_respuesta)
+        print("✅ Análisis JSON exitoso.")
         return resultado_ia
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en el motor de IA: {str(e)}")
-
+        print(f"🚨 ERROR FATAL EN EL SERVIDOR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
