@@ -6,7 +6,7 @@ import json
 
 # 1. Configuración de la API
 # ¡AQUÍ PON TU CLAVE REAL DE GEMINI!
-API_KEY = "TU_API_KEY_AQUI"
+API_KEY = "AIzaSyC15k5n-6eqqvFOaAkElQCc_7E9FOkvyS0"
 genai.configure(api_key=API_KEY)
 
 # 2. Inicializar la app
