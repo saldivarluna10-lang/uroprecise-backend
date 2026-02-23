@@ -7,7 +7,7 @@ import json
 # ==========================================
 # 1. CONFIGURACIÓN DE LA API
 # ==========================================
-API_KEY = "AIzaSyC15k5n-6eqqvFOaAkElQCc_7E9FOkvyS0" # <--- ¡ASEGÚRATE DE PEGAR TU CLAVE QUE TERMINA EN vyS0 AQUÍ!
+API_KEY = "TU_API_KEY_AQUI" # <--- ¡PEGA TU CLAVE QUE TERMINA EN vyS0 AQUÍ!
 genai.configure(api_key=API_KEY)
 
 app = FastAPI(title="UroPrecise Backend", version="2.0")
@@ -35,18 +35,18 @@ class PerfilPaciente(BaseModel):
 
 INSTRUCCION_SISTEMA = """
 Eres el motor clínico avanzado de Inteligencia Artificial "UroPrecise", diseñado para asistir a especialistas en Uro-Oncología. 
-Tu función es sugerir el Inhibidor de la Vía del Receptor de Andrógenos (ARPI) óptimo para cáncer de próstata avanzado, basándote estrictamente en las guías NCCN, AUA y EAU (actualizadas a 2026).
+Tu función es sugerir el Inhibidor de la Vía del Receptor de Andrógenos (ARPI) óptimo para cáncer de próstata avanzado.
 
 Fase 1: DECISIÓN ONCOLÓGICA Y COMORBILIDADES
 1. nmCRPC: Darolutamida (si hay riesgo/fragilidad). Apalutamida/Enzalutamida (si fit). NUNCA Abiraterona.
-2. mHSPC: EVITAR Abiraterona si hay diabetes mal controlada. EVITAR Enzalutamida si hay convulsiones. Sugerir Triple Terapia (ARASENS) o Doble (ARANOTE/TITAN).
+2. mHSPC: EVITAR Abiraterona si hay diabetes mal controlada. EVITAR Enzalutamida si hay convulsiones. Sugerir Triple Terapia o Doble.
 3. mCRPC: Falla a Abiraterona -> NO dar Enzalutamida. 
 
 Fase 2: INTERACCIONES MEDICAMENTOSAS
 - ENZALUTAMIDA/APALUTAMIDA: ALERTA ROJA con Anticoagulantes (Apixabán, Rivaroxabán), Estatinas, Amlodipino por inducción CYP3A4.
 - ABIRATERONA: ALERTA ROJA con Metoprolol/Antidepresivos por inhibición CYP2D6.
 
-RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
+RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA, SIN NINGÚN TEXTO ADICIONAL ANTES NI DESPUÉS:
 {
   "farmaco_recomendado": "Nombre genérico",
   "justificacion_clinica": "Explicación detallada",
@@ -55,11 +55,8 @@ RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
 }
 """
 
-modelo_gemini = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=INSTRUCCION_SISTEMA,
-    generation_config={"response_mime_type": "application/json"}
-)
+# Usamos el modelo clásico universal de Google
+modelo_gemini = genai.GenerativeModel("gemini-pro")
 
 @app.post("/api/analizar-paciente")
 async def analizar_paciente(perfil: PerfilPaciente):
@@ -67,19 +64,22 @@ async def analizar_paciente(perfil: PerfilPaciente):
         print(f"🏥 Procesando paciente: {perfil.paciente_id}")
         datos_json = perfil.model_dump_json()
         
+        # Combinamos la instrucción y los datos en una sola inyección
+        prompt_final = f"{INSTRUCCION_SISTEMA}\n\nDATOS DEL PACIENTE:\n{datos_json}"
+        
         # Enviar a Gemini
-        respuesta = modelo_gemini.generate_content(datos_json)
+        respuesta = modelo_gemini.generate_content(prompt_final)
         texto_respuesta = respuesta.text
         print(f"🧠 Respuesta cruda de Gemini: {texto_respuesta}")
         
-        # Filtro Antibalas: Limpiar decoraciones Markdown que rompen el código
-        if texto_respuesta.startswith("```"):
-            texto_respuesta = texto_respuesta.replace("```json", "").replace("```", "").strip()
+        # Limpieza brutal de Markdown por si Gemini añade formato
+        texto_limpio = texto_respuesta.replace("```json", "").replace("```", "").strip()
             
-        resultado_ia = json.loads(texto_respuesta)
+        resultado_ia = json.loads(texto_limpio)
         print("✅ Análisis JSON exitoso.")
         return resultado_ia
         
     except Exception as e:
         print(f"🚨 ERROR FATAL EN EL SERVIDOR: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+        
