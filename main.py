@@ -56,7 +56,7 @@ RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
 """
 
 modelo_gemini = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
+    model_name="gemini-1.5-pro-latest",
     system_instruction=INSTRUCCION_SISTEMA,
     generation_config={"response_mime_type": "application/json"}
 )
