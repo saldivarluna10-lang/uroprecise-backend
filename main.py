@@ -7,7 +7,7 @@ import json
 # ==========================================
 # 1. CONFIGURACIÓN DE LA API
 # ==========================================
-API_KEY = "TU_API_KEY_AQUI" # <--- ¡PEGA TU CLAVE QUE TERMINA EN vyS0 AQUÍ!
+API_KEY = "AIzaSyC15k5n-6eqqvFOaAkElQCc_7E9FOkvyS0" # <--- ¡PEGA TU CLAVE QUE TERMINA EN vyS0 AQUÍ!
 genai.configure(api_key=API_KEY)
 
 app = FastAPI(title="UroPrecise Backend", version="2.0")
