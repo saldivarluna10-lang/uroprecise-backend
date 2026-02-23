@@ -66,7 +66,7 @@ async def analizar_paciente(perfil: PerfilPaciente):
         
         # Enviar a Gemini usando el nuevo SDK y el modelo gemini-pro
         respuesta = cliente_gemini.models.generate_content(
-            model='gemini-pro',
+            model='gemini-2.0-flash',
             contents=prompt_final
         )
         
