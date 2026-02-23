@@ -1,14 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import google.generativeai as genai
 import json
+from google import genai
 
 # ==========================================
-# 1. CONFIGURACIÓN DE LA API
+# 1. CONFIGURACIÓN DE LA API (NUEVA LIBRERÍA)
 # ==========================================
 API_KEY = "AIzaSyC15k5n-6eqqvFOaAkElQCc_7E9FOkvyS0" # <--- ¡PEGA TU CLAVE QUE TERMINA EN vyS0 AQUÍ!
-genai.configure(api_key=API_KEY)
+cliente_gemini = genai.Client(api_key=API_KEY)
 
 app = FastAPI(title="UroPrecise Backend", version="2.0")
 
@@ -55,31 +55,32 @@ RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA, SIN NINGÚN
 }
 """
 
-# Usamos el modelo clásico universal de Google
-modelo_gemini = genai.GenerativeModel("gemini-pro")
-
 @app.post("/api/analizar-paciente")
 async def analizar_paciente(perfil: PerfilPaciente):
     try:
         print(f"🏥 Procesando paciente: {perfil.paciente_id}")
         datos_json = perfil.model_dump_json()
         
-        # Combinamos la instrucción y los datos en una sola inyección
+        # Combinamos la instrucción y los datos directo a la vena para Gemini Pro
         prompt_final = f"{INSTRUCCION_SISTEMA}\n\nDATOS DEL PACIENTE:\n{datos_json}"
         
-        # Enviar a Gemini
-        respuesta = modelo_gemini.generate_content(prompt_final)
+        # Enviar a Gemini usando el nuevo SDK y el modelo gemini-pro
+        respuesta = cliente_gemini.models.generate_content(
+            model='gemini-pro',
+            contents=prompt_final
+        )
+        
         texto_respuesta = respuesta.text
         print(f"🧠 Respuesta cruda de Gemini: {texto_respuesta}")
         
-        # Limpieza brutal de Markdown por si Gemini añade formato
-        texto_limpio = texto_respuesta.replace("```json", "").replace("```", "").strip()
+        # Filtro de limpieza por si Gemini manda formato Markdown
+        if texto_respuesta.startswith("```"):
+            texto_respuesta = texto_respuesta.replace("```json", "").replace("```", "").strip()
             
-        resultado_ia = json.loads(texto_limpio)
+        resultado_ia = json.loads(texto_respuesta)
         print("✅ Análisis JSON exitoso.")
         return resultado_ia
         
     except Exception as e:
         print(f"🚨 ERROR FATAL EN EL SERVIDOR: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-        
